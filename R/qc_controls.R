@@ -106,6 +106,8 @@ qc_controls <- function(marker,
   #        plot = sample_plot, width = 14, height = 6)
 
   # 6. Plate map
+  p.plates <- list()
+  
   if (requireNamespace("ggplate", quietly = TRUE)) {
     contam_plot <- df %>%
       dplyr::filter(species %in% control_species) %>%
@@ -114,8 +116,6 @@ qc_controls <- function(marker,
                 yesControl = ifelse(any(Abundance > 0), "+", ""),
                 type = dplyr::first(type)) %>%
       tidyr::separate(Sample, into = c("plate", "well"), sep = "-", remove = FALSE)
-
-    p.plates <- list()
 
     for (Plate in unique(contam_plot$plate)) {
       dat <- dplyr::filter(contam_plot, plate == Plate)
