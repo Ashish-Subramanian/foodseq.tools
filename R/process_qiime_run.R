@@ -158,7 +158,7 @@ plot_and_save_track <- function(track_df, run_dir, title = NULL) {
 #'
 #' @param marker The marker gene, either "trnL" or "12S"
 #' @param proj The name of the project
-#' @param download_mode If all files from the QIIME run were downloaded or just the necessary ones, either "full" or "minimal"
+#' @param dl_mode If all files from the QIIME run were downloaded or just the necessary ones, either "full" or "minimal"
 #' @return A track table and a plot of read counts, optionally
 #' @export
 process_qiime_run <- function(marker,
