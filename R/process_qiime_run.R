@@ -164,7 +164,6 @@ plot_and_save_track <- function(track_df, run_dir, title = NULL) {
 process_qiime_run <- function(marker,
                               proj = project,
                               download_mode = mode) {
-  mode <- download_mode
   run_dir <- get(paste0("qiime.dir.", marker), envir = parent.frame())
   plot_title <- paste0(proj, ": ", marker, " run")
 
@@ -194,7 +193,7 @@ process_qiime_run <- function(marker,
   }
 
   # Dispatch by mode
-  if (mode == "minimal") {
+  if (download_mode == "minimal") {
     tr <- try_read_track_csv()
     if (is.null(tr)) {
       message("[", marker, "] minimal mode: no track-pipeline.csv present -> skipping plot.")
@@ -204,7 +203,7 @@ process_qiime_run <- function(marker,
     return(list(track = tr, plot = p))
   }
 
-  if (mode == "full") {
+  if (download_mode == "full") {
     if (!qzv_needed) {
       stop("[", marker, "] full mode requires the *.qzv files to build track table, but none were found.")
     }
@@ -215,7 +214,7 @@ process_qiime_run <- function(marker,
     return(list(track = tr, plot = p))
   }
 
-  # mode == "auto"
+  # download_mode == "auto"
   # 1) Prefer existing CSV
   tr <- try_read_track_csv()
   if (!is.null(tr)) {
