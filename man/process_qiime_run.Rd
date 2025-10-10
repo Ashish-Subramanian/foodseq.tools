@@ -11,7 +11,7 @@ process_qiime_run(marker, proj = project, download_mode = mode)
 
 \item{proj}{The name of the project}
 
-\item{download_mode}{If all files from the QIIME run were downloaded or just the necessary ones, either "full" or "minimal"}
+\item{dl_mode}{If all files from the QIIME run were downloaded or just the necessary ones, either "full" or "minimal"}
 }
 \value{
 A track table and a plot of read counts, optionally
