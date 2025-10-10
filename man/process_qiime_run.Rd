@@ -4,7 +4,7 @@
 \alias{process_qiime_run}
 \title{Process QIIME Run}
 \usage{
-process_qiime_run(marker, proj = project, download_mode = mode)
+process_qiime_run(marker, proj = project, dl_mode = download_mode)
 }
 \arguments{
 \item{marker}{The marker gene, either "trnL" or "12S"}
