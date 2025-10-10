@@ -115,26 +115,30 @@ qc_controls <- function(marker,
                 type = dplyr::first(type)) %>%
       tidyr::separate(Sample, into = c("plate", "well"), sep = "-", remove = FALSE)
 
+    p.plates <- list()
+
     for (Plate in unique(contam_plot$plate)) {
       dat <- dplyr::filter(contam_plot, plate == Plate)
-      p.plate <- ggplate::plate_plot(
-        data = dat,
-        position = well,
-        label = yesControl,
-        value = type,
-        plate_size = 96,
-        plate_type = "round",
+      p.cur <- ggplate::plate_plot(
+        data = dat, position = well, label = yesControl, value = type,
+        plate_size = 96, plate_type = "round",
         title = paste0(proj, ": ", marker, " positive controls detected on barcode plate ", Plate),
         limits = c(1, 2),
         colour = c(
-          "sample" = "#f0f0f0",
-          "negative control" = "#ff8080",
-          "positive control"    = "#80ff80",
-          "blank"  = "#fff"
+          "sample"            = "#f0f0f0",
+          "negative control"  = "#ff8080",
+          "positive control"  = "#80ff80",
+          "blank"             = "#fff"
         )
       ) + ggplot2::labs(fill = "Type")
-      ggplot2::ggsave(filename = file.path(out_dir, paste0("QC_Pos.ControlMap_Plate_", Plate, ".png")),
-             plot = p.plate, width = 7, height = 7)
+
+      ggplot2::ggsave(
+        filename = file.path(out_dir, paste0("QC_Pos.ControlMap_Plate_", Plate, ".png")),
+        plot = p.cur, width = 7, height = 7
+      )
+
+      p.plates[[Plate]] <- p.cur
+
     }
   } else {
     message("ggplate not installed; skipping plate map.")
@@ -143,5 +147,5 @@ qc_controls <- function(marker,
   # Return results
   list(p.controls = p.controls,
        p.samples = p.samples,
-       p.plate = p.plate)
+       p.plates = p.plates)
 }
