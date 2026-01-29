@@ -112,7 +112,8 @@ qc_controls <- function(marker,
   #        plot = sample_plot, width = 14, height = 6)
 
   # 6. Plate map
-  p.plate <- NULL
+  p.plates <- list()
+
   if (requireNamespace("ggplate", quietly = TRUE)) {
     contam_plot <- df %>%
       dplyr::filter(species %in% control_species) %>%
@@ -130,7 +131,6 @@ qc_controls <- function(marker,
     if (length(plates) == 0L) {
       message("No plate IDs found (no control species or Sample lacked '-').")
     } else {
-      built <- list()
       for (Plate in plates) {
         dat <- dplyr::filter(contam_plot, plate == !!Plate)
         if (nrow(dat) == 0L) next
@@ -139,19 +139,21 @@ qc_controls <- function(marker,
           plate_size = 96, plate_type = "round",
           title = paste0(proj, ": ", marker, " positive controls detected on barcode plate ", Plate),
           limits = c(1, 2),
-          colour = c(sample = "#f0f0f0",
-                     `negative control` = "#ff8080",
-                     `positive control` = "#80ff80",
-                     blank = "#ffffff")
+          colour = c(
+            "sample"            = "#f0f0f0",
+            "negative control"  = "#ff8080",
+            "positive control"  = "#80ff80",
+            "blank"             = "#ffffff"
+          )
         ) + ggplot2::labs(fill = "Type")
 
         ggplot2::ggsave(
           filename = file.path(out_dir, paste0("QC_Pos.ControlMap_Plate_", Plate, ".png")),
           plot = p.cur, width = 7, height = 7
         )
-        built[[as.character(Plate)]] <- p.cur
+
+        p.plates[[as.character(Plate)]] <- p.cur
       }
-      if (length(built) >= 1L) p.plate <- built  # return all plate plots as a list
     }
   } else {
     message("ggplate not installed; skipping plate map.")
@@ -160,5 +162,5 @@ qc_controls <- function(marker,
   # Return results
   list(p.controls = p.controls,
        p.samples = p.samples,
-       p.plate = p.plate)
+       p.plates = p.plates)
 }
