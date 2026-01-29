@@ -39,46 +39,52 @@ qc_controls <- function(marker,
   ps.subset <- phyloseq::subset_samples(ps, type != "sample")
   ps.controls <- phyloseq::prune_taxa(phyloseq::taxa_sums(ps.subset) > 0, ps.subset)
 
-  # 2. Build tax labels
-  taxtab.controls <- phyloseq::tax_table(ps.controls)@.Data %>%
-    data.frame(stringsAsFactors = FALSE) %>%
-    dplyr::mutate(label = dplyr::coalesce(species, genus, family, order, phylum))
-  phyloseq::tax_table(ps.controls) <- as.matrix(taxtab.controls)
+  # 2. Build taxonomy table of controls
+  if (phyloseq::nsamples(ps.controls) > 0 && phyloseq::ntaxa(ps.controls) > 0) {
+    taxtab.controls <- phyloseq::tax_table(ps.controls)@.Data %>%
+      data.frame(stringsAsFactors = FALSE) %>%
+      dplyr::mutate(label = dplyr::coalesce(species, genus, family, order, phylum))
+    phyloseq::tax_table(ps.controls) <- as.matrix(taxtab.controls)
 
   # 3. Plot controls composition
-  p.controls <- ps.controls %>%
-    phyloseq::psmelt() %>%
-    ggplot2::ggplot(ggplot2::aes(x = Sample, y = Abundance, fill = label)) +
-    ggplot2::geom_bar(stat = "identity", position = "stack") +
-    ggplot2::facet_wrap(stats::as.formula(paste0("~", "type")), scales = "free") +
-    ggplot2::labs(
-      x = 'Control',
-      y = 'Number of reads',
-      fill = 'ASV identity',
-      title = paste0(proj, ": ", marker, " positive controls, negative controls, and blanks")
-    )
+    p.controls <- ps.controls %>%
+      phyloseq::psmelt() %>%
+      ggplot2::ggplot(ggplot2::aes(x = Sample, y = Abundance, fill = label)) +
+      ggplot2::geom_bar(stat = "identity", position = "stack") +
+      ggplot2::facet_wrap(stats::as.formula("~type"), scales = "free") +
+      ggplot2::labs(x = "Control", y = "Number of reads", fill = "ASV identity",
+                    title = paste0(proj, ": ", marker, " positive controls, negative controls, and blanks"))
 
-  ggplot2::ggsave(filename = file.path(out_dir, "QC_controls.png"), plot = p.controls, width = 12, height = 6)
+    ggplot2::ggsave(filename = file.path(out_dir, "QC_controls.png"),
+                    plot = p.controls, width = 12, height = 6)
+  } else {
+    message("[SKIP] No non-sample controls or zero-abundance; not saving QC_controls.png")
+    p.controls <- NULL
+  }
 
   # 4. Positive control species detected in non-positive-control samples
   df <- phyloseq::psmelt(ps)
   df$type <- as.character(df[["type"]])
 
-  p.samples <- df %>%
+  df_pos <- df %>%
     dplyr::filter(species %in% control_species,
-           Abundance > 0,
-           tolower(type) != "positive control") %>%
-    ggplot2::ggplot(ggplot2::aes(x = Sample, y = Abundance, fill = species)) +
-    ggplot2::geom_bar(stat = 'identity') +
-    ggplot2::facet_wrap(stats::as.formula(paste0("~", "type")), scales = "free") +
-    ggplot2::labs(
-      x = 'Sample',
-      y = 'Number of reads',
-      fill = 'Species',
-      title = paste0(proj, ": Samples where ", marker, " positive controls were detected")
-    )
+                  Abundance > 0,
+                  tolower(type) != "positive control")
 
-  ggplot2::ggsave(filename = file.path(out_dir, "QC_Pos.Control-Detections.png"), plot = p.samples, width = 12, height = 6)
+  if (nrow(df_pos) > 0) {
+    p.samples <- df_pos %>%
+      ggplot2::ggplot(ggplot2::aes(x = Sample, y = Abundance, fill = species)) +
+      ggplot2::geom_bar(stat = "identity") +
+      ggplot2::facet_wrap(stats::as.formula("~type"), scales = "free") +
+      ggplot2::labs(x = "Sample", y = "Number of reads", fill = "Species",
+                    title = paste0(proj, ": Samples where ", marker, " positive controls were detected"))
+
+    ggplot2::ggsave(filename = file.path(out_dir, "QC_Pos.Control-Detections.png"),
+                    plot = p.samples, width = 12, height = 6)
+  } else {
+    message("[SKIP] No positive-control detections in non-positive-control samples; not saving QC_Pos.Control-Detections.png")
+    p.samples <- NULL
+  }
 
   # 5. Which samples show control species
   yesControl <- df %>%
@@ -106,38 +112,46 @@ qc_controls <- function(marker,
   #        plot = sample_plot, width = 14, height = 6)
 
   # 6. Plate map
+  p.plate <- NULL
   if (requireNamespace("ggplate", quietly = TRUE)) {
     contam_plot <- df %>%
       dplyr::filter(species %in% control_species) %>%
       dplyr::group_by(Sample) %>%
-      dplyr::summarise(reads = sum(as.numeric(Abundance)),
-                yesControl = ifelse(any(Abundance > 0), "+", ""),
-                type = dplyr::first(type)) %>%
-      tidyr::separate(Sample, into = c("plate", "well"), sep = "-", remove = FALSE)
+      dplyr::summarise(
+        reads = sum(as.numeric(Abundance), na.rm = TRUE),
+        yesControl = ifelse(any(Abundance > 0, na.rm = TRUE), "+", ""),
+        type = dplyr::first(type),
+        .groups = "drop"
+      ) %>%
+      tidyr::separate(Sample, into = c("plate","well"), sep = "-", extra = "merge",
+                      fill = "right", remove = FALSE)
 
-    p.plates <- list()
+    plates <- unique(stats::na.omit(contam_plot$plate))
+    if (length(plates) == 0L) {
+      message("No plate IDs found (no control species or Sample lacked '-').")
+    } else {
+      built <- list()
+      for (Plate in plates) {
+        dat <- dplyr::filter(contam_plot, plate == !!Plate)
+        if (nrow(dat) == 0L) next
+        p.cur <- ggplate::plate_plot(
+          data = dat, position = well, label = yesControl, value = type,
+          plate_size = 96, plate_type = "round",
+          title = paste0(proj, ": ", marker, " positive controls detected on barcode plate ", Plate),
+          limits = c(1, 2),
+          colour = c(sample = "#f0f0f0",
+                     `negative control` = "#ff8080",
+                     `positive control` = "#80ff80",
+                     blank = "#ffffff")
+        ) + ggplot2::labs(fill = "Type")
 
-    for (Plate in unique(contam_plot$plate)) {
-      dat <- dplyr::filter(contam_plot, plate == Plate)
-      p.cur <- ggplate::plate_plot(
-        data = dat, position = well, label = yesControl, value = type,
-        plate_size = 96, plate_type = "round",
-        title = paste0(proj, ": ", marker, " positive controls detected on barcode plate ", Plate),
-        limits = c(1, 2),
-        colour = c(
-          "sample"            = "#f0f0f0",
-          "negative control"  = "#ff8080",
-          "positive control"  = "#80ff80",
-          "blank"             = "#fff"
+        ggplot2::ggsave(
+          filename = file.path(out_dir, paste0("QC_Pos.ControlMap_Plate_", Plate, ".png")),
+          plot = p.cur, width = 7, height = 7
         )
-      ) + ggplot2::labs(fill = "Type")
-
-      ggplot2::ggsave(
-        filename = file.path(out_dir, paste0("QC_Pos.ControlMap_Plate_", Plate, ".png")),
-        plot = p.cur, width = 7, height = 7
-      )
-
-      p.plates[[Plate]] <- p.cur
+        built[[as.character(Plate)]] <- p.cur
+      }
+      if (length(built) >= 1L) p.plate <- built  # return all plate plots as a list
     }
   } else {
     message("ggplate not installed; skipping plate map.")
@@ -146,5 +160,5 @@ qc_controls <- function(marker,
   # Return results
   list(p.controls = p.controls,
        p.samples = p.samples,
-       p.plates = p.plates)
+       p.plate = p.plate)
 }
