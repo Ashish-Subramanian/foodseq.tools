@@ -188,12 +188,32 @@ assignment_trnL <- function(qiime_asvtab = qiime.asvtab.trnL,
   ranks <- c("superkingdom","phylum","class","order","family",
              "genus","species","subspecies","varietas","forma")
 
-  # Adaptation of assignSpecies_mod for an assignTaxonomy-formatted reference
+  # Adaptation of assignSpecies_Taxonomy for an assignTaxonomy-formatted reference
   table <- assignSpecies_Taxonomy(qiime_asvtab, ref_fasta, tryRC = tryRC)
 
+  # Clean up subspecific ranks (subspecies, varietas, forma) BEFORE condenseTaxa
+  # These should only be kept if ALL matches for an ASV agree on them
+  subspecific_ranks <- c("subspecies", "varietas", "forma")
+  table_clean <- table %>%
+    dplyr::group_by(asv) %>%
+    dplyr::mutate(dplyr::across(
+      dplyr::all_of(subspecific_ranks),
+      ~ if (dplyr::n() > 1) {
+        # If multiple matches exist, only keep subspecific rank if all agree (ignoring NAs)
+        non_na_vals <- .[!is.na(.)]
+        if (length(non_na_vals) > 0 && length(unique(non_na_vals)) > 1) {
+          NA_character_  # Disagreement: set to NA
+        } else {
+          .  # Agreement or all NA: keep as is
+        }
+      } else {
+        .  # Single match: keep as is
+      }
+    )) %>%
+    dplyr::ungroup()
 
-  taxaTable <- as.matrix(table[, ranks, drop = FALSE])
-  groupings <- table$asv
+  taxaTable <- as.matrix(table_clean[, ranks, drop = FALSE])
+  groupings <- table_clean$asv
   assignments <- taxonomizr::condenseTaxa(taxaTable, groupings = groupings)
 
 

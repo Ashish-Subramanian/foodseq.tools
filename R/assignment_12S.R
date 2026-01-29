@@ -149,10 +149,32 @@ assignment_12S <- function(qiime_asvtab = qiime.asvtab.12S,
   pct_reads_unassigned <- 100 * reads_unassigned / total_reads
   pct_reads_assigned   <- 100 - pct_reads_unassigned
 
-  # 3) Condense to last common ancestor by ASV
+  # 3) Clean up subspecific ranks BEFORE condenseTaxa
+  # Subspecies should only be kept if there's no ambiguity
+  # If multiple matches exist for an ASV, subspecies is NA'd out if they disagree
+  subspecific_ranks <- c("subspecies")
+  taxonomy_clean <- taxonomy %>%
+    dplyr::group_by(asv) %>%
+    dplyr::mutate(dplyr::across(
+      dplyr::all_of(subspecific_ranks),
+      ~ if (dplyr::n() > 1) {
+        # If multiple matches exist, only keep subspecific rank if all agree (ignoring NAs)
+        non_na_vals <- .[!is.na(.)]
+        if (length(non_na_vals) > 0 && length(unique(non_na_vals)) > 1) {
+          NA_character_  # Disagreement: set to NA
+        } else {
+          .  # Agreement or all NA: keep as is
+        }
+      } else {
+        .  # Single match: keep as is
+      }
+    )) %>%
+    dplyr::ungroup()
+
+  # Condense to last common ancestor by ASV
   # taxonomizr::condenseTaxa expects a data.frame of ranks; group by ASV ids
-  rank_df <- taxonomy[, taxLevels, drop = FALSE]
-  assignments <- taxonomizr::condenseTaxa(rank_df, groupings = taxonomy$asv)
+  rank_df <- taxonomy_clean[, taxLevels, drop = FALSE]
+  assignments <- taxonomizr::condenseTaxa(rank_df, groupings = taxonomy_clean$asv)
 
   # Normalize orientation to rows = ASVs, cols = ranks
   if (is.null(colnames(assignments)) || !all(taxLevels %in% colnames(assignments))) {
