@@ -59,7 +59,7 @@ plot_asv_length_hist <- function(marker, proj = project, bin_size = 2) {
 
   # Save output
   ggplot2::ggsave(file.path(out_dir, paste0("QC_seq-lengths-histogram_", marker, ".png")),
-         plot = p, width = 8, height = 6)
+         plot = p, width = 8, height = 6, dpi = 300)
 
   # Return results
   list(plot = p,

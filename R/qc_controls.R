@@ -56,7 +56,7 @@ qc_controls <- function(marker,
                     title = paste0(proj, ": ", marker, " positive controls, negative controls, and blanks"))
 
     ggplot2::ggsave(filename = file.path(out_dir, "QC_controls.png"),
-                    plot = p.controls, width = 12, height = 6)
+                    plot = p.controls, width = 12, height = 6, dpi = 300)
   } else {
     message("[SKIP] No non-sample controls or zero-abundance; not saving QC_controls.png")
     p.controls <- NULL
@@ -80,7 +80,7 @@ qc_controls <- function(marker,
                     title = paste0(proj, ": Samples where ", marker, " positive controls were detected"))
 
     ggplot2::ggsave(filename = file.path(out_dir, "QC_Pos.Control-Detections.png"),
-                    plot = p.samples, width = 12, height = 6)
+                    plot = p.samples, width = 12, height = 6, dpi = 300)
   } else {
     message("[SKIP] No positive-control detections in non-positive-control samples; not saving QC_Pos.Control-Detections.png")
     p.samples <- NULL
@@ -149,7 +149,7 @@ qc_controls <- function(marker,
 
         ggplot2::ggsave(
           filename = file.path(out_dir, paste0("QC_Pos.ControlMap_Plate_", Plate, ".png")),
-          plot = p.cur, width = 7, height = 7
+          plot = p.cur, width = 7, height = 7, dpi = 300
         )
 
         p.plates[[as.character(Plate)]] <- p.cur
