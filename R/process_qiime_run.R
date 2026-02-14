@@ -144,7 +144,6 @@ plot_and_save_track <- function(track_df, run_dir, title = NULL) {
       x = "Pipeline step", y = "Reads",
       title = if (is.null(title)) paste0(basename(run_dir), " run") else title
     ) +
-    ggplot2::theme_bw() +
     ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 45, hjust = 1))
 
   ggplot2::ggsave(file.path(run_dir, "QC_track-reads-plot.png"),

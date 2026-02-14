@@ -49,11 +49,9 @@ plot_asv_length_hist <- function(marker, proj = project, bin_size = 2) {
                color = 'red', linetype = 'dashed') +
     ggplot2::annotate("text", x = len_range[1] - x_distance * 0.025, y = max_y * 0.5,
              label = paste0("95% of ", marker, " ASVs fall within this range"),
-             angle = 90, color = "red", size = 3, hjust = 0.5,
-             family = "Source Sans Pro") +
+             angle = 90, color = "red", size = 3, hjust = 0.5) +
     ggplot2::labs(x = 'ASV length (bp)', y = 'Count',
          title = paste0(proj, ": Histogram of ", marker, " ASV lengths")) +
-    ggplot2::theme_bw() +
     ggplot2::scale_x_continuous(minor_breaks = seq(0, 250, 10),
                        breaks = seq(0, 250, 50))
 
