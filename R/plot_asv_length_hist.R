@@ -28,10 +28,12 @@ plot_asv_length_hist <- function(marker, proj = project, bin_size = 2) {
     len_range <- c(91, 102)
   } else {}
 
-  gb <- ggplot2::ggplot_build(
+  # ggplot_build() opens an internal device to compute layout; suppress font
+  # warnings by using a null device that doesn't need the font to resolve
+  gb <- suppressWarnings(ggplot2::ggplot_build(
     ggplot2::ggplot(lengths, ggplot2::aes(x = length)) +
       ggplot2::geom_histogram(binwidth = bin_size, boundary = 0)
-  )
+  ))
 
   # geom_histogram layer is [[1]]
   max_y <- max(gb$data[[1]]$count, na.rm = TRUE)
