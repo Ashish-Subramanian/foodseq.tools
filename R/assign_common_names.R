@@ -400,6 +400,45 @@ assign_common_names <- function(physeq, common_names_csv,
     }
   }
 
+  # --- Species-level common name propagation ---
+  # For ASVs with no CSV match, inherit the common name from sibling ASVs
+  # that share the same species-level (and below) taxonomy.
+  all_cols <- colnames(tax_tab)
+  species_col_idx <- which(tolower(all_cols) == "species")
+  if (length(species_col_idx) == 1) {
+    sp_col <- all_cols[species_col_idx]
+    subsp_cols <- all_cols[tolower(all_cols) %in% c("subspecies", "varietas", "forma")]
+    group_cols <- c(sp_col, subsp_cols)
+
+    species_key <- apply(tax_tab[, group_cols, drop = FALSE], 1, function(row) {
+      paste(row, collapse = "|")
+    })
+
+    has_species <- !is.na(tax_tab[[sp_col]]) & nzchar(tax_tab[[sp_col]])
+    needs_name  <- is.na(tax_tab$common_name) & has_species
+    has_name    <- !is.na(tax_tab$common_name) & has_species
+
+    if (any(needs_name) && any(has_name)) {
+      propagated <- 0L
+      for (i in which(needs_name)) {
+        donors <- which(has_name & species_key == species_key[i])
+        if (length(donors) > 0) {
+          donor_names <- tax_tab$common_name[donors]
+          tax_tab$common_name[i] <- names(which.max(table(donor_names)))
+          if (is.na(tax_tab$taxa[i])) {
+            donor_taxa <- tax_tab$taxa[donors]
+            donor_taxa <- donor_taxa[!is.na(donor_taxa)]
+            if (length(donor_taxa) > 0) tax_tab$taxa[i] <- donor_taxa[1]
+          }
+          propagated <- propagated + 1L
+        }
+      }
+      if (propagated > 0) {
+        message(sprintf("Propagated common names to %d ASVs via species-level matching.", propagated))
+      }
+    }
+  }
+
   # Update the tax_table in phyloseq
   phyloseq::tax_table(physeq) <- as.matrix(tax_tab)
 
