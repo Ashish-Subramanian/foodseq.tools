@@ -35,5 +35,8 @@ its tax_table. Multi-match conflict details are stored as an attribute
 \description{
 Matches ASV sequences in a phyloseq's tax_table to a reference CSV of common
 names, adding \code{common_name} and \code{taxa} columns. Handles multi-match conflicts
-via superset logic, genus-level resolution, and smart name merging.
+via superset logic, genus-level resolution, and smart name merging. For ASVs
+with no CSV match but a species-level (or below) taxonomy assignment, common
+names are propagated from sibling ASVs that share the same taxonomic
+classification, provided all siblings agree on a single unambiguous name.
 }

@@ -2,7 +2,10 @@
 #'
 #' Matches ASV sequences in a phyloseq's tax_table to a reference CSV of common
 #' names, adding `common_name` and `taxa` columns. Handles multi-match conflicts
-#' via superset logic, genus-level resolution, and smart name merging.
+#' via superset logic, genus-level resolution, and smart name merging. For ASVs
+#' with no CSV match but a species-level (or below) taxonomy assignment, common
+#' names are propagated from sibling ASVs that share the same taxonomic
+#' classification, provided all siblings agree on a single unambiguous name.
 #'
 #' @param physeq A phyloseq object
 #' @param common_names_csv Path to a CSV with columns: `asv`, `conventional_name`,
@@ -402,7 +405,8 @@ assign_common_names <- function(physeq, common_names_csv,
 
   # --- Species-level common name propagation ---
   # For ASVs with no CSV match, inherit the common name from sibling ASVs
-  # that share the same species-level (and below) taxonomy.
+  # that share the same species-level (and below) taxonomy, provided all
+  # donors for that species agree on the same common name (unambiguous).
   all_cols <- colnames(tax_tab)
   species_col_idx <- which(tolower(all_cols) == "species")
   if (length(species_col_idx) == 1) {
@@ -410,7 +414,9 @@ assign_common_names <- function(physeq, common_names_csv,
     subsp_cols <- all_cols[tolower(all_cols) %in% c("subspecies", "varietas", "forma")]
     group_cols <- c(sp_col, subsp_cols)
 
+    # Normalize NA and empty strings to a common sentinel before building keys
     species_key <- apply(tax_tab[, group_cols, drop = FALSE], 1, function(row) {
+      row[is.na(row) | !nzchar(row)] <- "<NA>"
       paste(row, collapse = "|")
     })
 
@@ -420,21 +426,32 @@ assign_common_names <- function(physeq, common_names_csv,
 
     if (any(needs_name) && any(has_name)) {
       propagated <- 0L
+      skipped_ambiguous <- 0L
       for (i in which(needs_name)) {
         donors <- which(has_name & species_key == species_key[i])
         if (length(donors) > 0) {
-          donor_names <- tax_tab$common_name[donors]
-          tax_tab$common_name[i] <- names(which.max(table(donor_names)))
-          if (is.na(tax_tab$taxa[i])) {
-            donor_taxa <- tax_tab$taxa[donors]
-            donor_taxa <- donor_taxa[!is.na(donor_taxa)]
-            if (length(donor_taxa) > 0) tax_tab$taxa[i] <- donor_taxa[1]
+          donor_names <- unique(tax_tab$common_name[donors])
+          if (length(donor_names) == 1) {
+            tax_tab$common_name[i] <- donor_names
+            if (is.na(tax_tab$taxa[i])) {
+              donor_taxa <- tax_tab$taxa[donors]
+              donor_taxa <- donor_taxa[!is.na(donor_taxa)]
+              if (length(donor_taxa) > 0) tax_tab$taxa[i] <- donor_taxa[1]
+            }
+            propagated <- propagated + 1L
+          } else {
+            skipped_ambiguous <- skipped_ambiguous + 1L
           }
-          propagated <- propagated + 1L
         }
       }
       if (propagated > 0) {
         message(sprintf("Propagated common names to %d ASVs via species-level matching.", propagated))
+      }
+      if (skipped_ambiguous > 0) {
+        message(sprintf(
+          "Skipped %d ASVs with ambiguous species-level common names (multiple different names for same species).",
+          skipped_ambiguous
+        ))
       }
     }
   }
