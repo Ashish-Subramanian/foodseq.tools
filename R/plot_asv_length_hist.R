@@ -3,14 +3,19 @@
 #' This function plots a histogram of ASV lengths.
 #'
 #' @param marker The marker gene, either "trnL" or "12S"
+#' @param asvtab The ASV table (samples x ASVs). Defaults to looking up
+#'   \code{qiime.asvtab.<marker>} in the calling environment.
+#' @param out_dir Path to the output directory for saving the plot. Defaults to
+#'   looking up \code{qiime.dir.<marker>} in the calling environment.
 #' @param proj The name of the project
 #' @param bin_size The bin size of the histogram
 #' @return A histogram of ASV lengths and a dataframe of lengths
 #' @export
-plot_asv_length_hist <- function(marker, proj = project, bin_size = 2) {
-
-  asvtab <- get(paste0("qiime.asvtab.", marker), envir = parent.frame())
-  out_dir <- get(paste0("qiime.dir.", marker), envir = parent.frame())
+plot_asv_length_hist <- function(marker,
+                                 asvtab = get(paste0("qiime.asvtab.", marker), envir = parent.frame()),
+                                 out_dir = get(paste0("qiime.dir.", marker), envir = parent.frame()),
+                                 proj = project,
+                                 bin_size = 2) {
 
   # Calculate ASV lengths
   lengths <- data.frame(

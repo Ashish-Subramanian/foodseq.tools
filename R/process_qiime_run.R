@@ -156,14 +156,16 @@ plot_and_save_track <- function(track_df, run_dir, title = NULL) {
 #' This function optionally unzips files, creates a track table, and outputs a plot of read counts depending on inputs.
 #'
 #' @param marker The marker gene, either "trnL" or "12S"
+#' @param run_dir Path to the QIIME run directory. Defaults to looking up
+#'   \code{qiime.dir.<marker>} in the calling environment.
 #' @param proj The name of the project
 #' @param dl_mode If all files from the QIIME run were downloaded or just the necessary ones, either "full" or "minimal"
 #' @return A track table and a plot of read counts, optionally
 #' @export
 process_qiime_run <- function(marker,
+                              run_dir = get(paste0("qiime.dir.", marker), envir = parent.frame()),
                               proj = project,
                               dl_mode = download_mode) {
-  run_dir <- get(paste0("qiime.dir.", marker), envir = parent.frame())
   plot_title <- paste0(proj, ": ", marker, " run")
 
   # Files we might use
