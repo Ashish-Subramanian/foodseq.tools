@@ -224,8 +224,10 @@ assignment_12S <- function(qiime_asvtab = qiime.asvtab.12S,
   assignments_mat <- as.matrix(assignments)
   storage.mode(assignments_mat) <- "character"
 
-  # Which ASVs have NA specifically at the 'order' rank?
-  asvs_na <- rownames(assignments_mat)[is.na(assignments_mat[, "order"])]
+  # Which ASVs have NA at both 'order' and 'family'?
+  asvs_na <- rownames(assignments_mat)[
+    is.na(assignments_mat[, "order"]) & is.na(assignments_mat[, "family"])
+  ]
 
   # Build the report (samples with reads > 0, and total reads)
   if (length(asvs_na)) {
